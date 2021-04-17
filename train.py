@@ -142,7 +142,6 @@ def main():
             print('Average_score: {}\n'.format(sum_score))
             write_log('Average_score: {}\n'.format(sum_score))
 
-            # 如果val的时候score不再下降, lr decay
             if sum_score < best_val:
                 valtrack += 1
             if valtrack >= opts.patience:
@@ -246,60 +245,6 @@ def train(train_loader, model, criterion, optimizer, epoch):
             semi_ratio_average += semi_ratio
             optimizer.step()
             optimizer.zero_grad()
-
-        elif opts.neg == 'trihard':
-            # fix batch_norm anb dropout because of the unfixed batch_size
-            for layer in model.modules():
-                if isinstance(layer, nn.BatchNorm2d) or isinstance(layer, nn.BatchNorm3d):
-                    layer.eval()
-            with torch.no_grad():
-                input_var = list()
-                for j in range(len(input)):
-                    input_var.append(input[j].to(device))
-                # BN and dropout will be activated for choosing triplet
-                scores = model(input_var[0], input_var[1], input_var[2], input_var[3], input_var[4])
-            it_index, ti_index = utils.select_trihard(scores)
-            loss_value = 0
-            num = 0
-            for it in it_index:
-                output = model(input_var[0], input_var[1], input_var[2], input_var[3], input_var[4], hard=True, hard_index=it)
-                loss, semi_num = utils.calcul_loss(output, opts.margin, opts.neg)
-                loss_value += loss.item()
-                # compute gradient and do Adam step
-                loss.backward()
-                num += 1
-                if num % 32 == 0 or num == len(it_index):
-                    optimizer.step()
-                    optimizer.zero_grad()
-            num = 0
-            for ti in ti_index:
-                output = model(input_var[0], input_var[1], input_var[2], input_var[3], input_var[4], hard=True, hard_index=ti)
-                output = output.t()  # transposition to move ap and an to first row
-                loss, semi_num = utils.calcul_loss(output, opts.margin, opts.neg)
-                loss_value += loss.item()
-                # compute gradient and do Adam step
-                loss.backward()
-                num += 1
-                if num % 32 == 0 or num == len(it_index):
-                    optimizer.step()
-                    optimizer.zero_grad()
-                # measure elapsed time
-            semi_ratio = 1
-            semi_ratio_average += semi_ratio
-            loss_value /= (opts.batch_size * 2)
-        elif opts.neg == 'msml':
-            output = model(input_var[0], input_var[1], input_var[2], input_var[3], input_var[4])
-            # compute loss
-            margin = opts.margin
-            loss, semi_num = utils.calcul_loss(output, margin, opts.neg)
-            loss_value = loss.item()
-            semi_ratio = semi_num / (opts.batch_size * opts.batch_size * 2)
-            semi_ratio_average += semi_ratio
-            # compute gradient and do Adam step
-            loss.backward()
-            if i % 50 == 0 and i != 0:
-                optimizer.step()
-                optimizer.zero_grad()
 
         batch_time.update(time.time() - end)
         batch_num += 1

@@ -1,11 +1,3 @@
-#encoding:utf-8
-# -----------------------------------------------------------
-# "Matching Images and Text with Multi-modal Tensor Fusion and Re-ranking"
-# WangTan, XingXu, YangYang, Alan Hanjalic, HengtaoShen, JingkuanSong
-# ACM Multimedia 2019, Nice, France
-# Writen by WangTan, 2019
-# ------------------------------------------------------------
-
 import torch
 import numpy as np
 import sys
@@ -39,7 +31,6 @@ def calcul_loss(scores, margin, neg):
     cost_s = cost_s.masked_fill_(I, 0)
     cost_im = cost_im.masked_fill_(I, 0)
     if neg == 'hardest':
-        # 此时受到batch_size限制，大多数样本的hardest不会差距很大
         num_s = torch.where(cost_s>0)[0].size(0)
         num_im = torch.where(cost_im>0)[0].size(0)
         cost_s = cost_s.max(1)[0]
