@@ -31,35 +31,14 @@ def calcul_loss(scores, margin, neg):
     cost_s = cost_s.masked_fill_(I, 0)
     cost_im = cost_im.masked_fill_(I, 0)
     if neg == 'hardest':
-        num_s = torch.where(cost_s>0)[0].size(0)
-        num_im = torch.where(cost_im>0)[0].size(0)
-        cost_s = cost_s.max(1)[0]
-        cost_im = cost_im.max(0)[0]
-        return cost_s.sum() + cost_im.sum(), num_s+num_im
-    elif neg == 'trihard':
-        # max_s(an) - min_s(ap) + margin
-        # scores : [[aa, an], [na, nn]]
-        hard_ap = scores[0][0]
-        hard_an = scores[0][1]
-        return (hard_an - hard_ap + margin).clamp(min=0), 1
+        return cost_s.sum() + cost_im.sum(), 2
     elif neg == 'semi':
         # semi-hardest, select s(an) < s(ap), so let s(an)>s(ap)=0
         mask_s = Variable(scores > d1)
         mask_im = Variable(scores > d2)
         cost_s = cost_s.masked_fill_(mask_s, 0)
         cost_im = cost_im.masked_fill_(mask_im, 0)
-        num_semi_s = (cost_s>0).float().sum(1) + 1e-20
-        num_semi_im = (cost_im>0).float().sum(1) + 1e-20
-        # select all semi-hard, then take average
-        cost_s = cost_s.sum(1) / num_semi_s
-        cost_im = cost_im.sum(1) / num_semi_im
-        return cost_s.sum() + cost_im.sum(), num_semi_s.sum() + num_semi_im.sum() # loss/=(batch_size*2)
-    elif neg == 'msml':
-        #  max_s(mn) - min_s(ap) + margin
-        #  scores calculated by [a, m, n]
-        hard_ap = diagonal.min()
-        hard_mn = scores.masked_fill(I, 0).max()
-        return (hard_mn-hard_ap+margin).clamp(min=0), 1
+        return cost_s.sum() + cost_im.sum(), 2 # loss/=(batch_size*2)
     elif neg == 'ohnm':
         return scores[0][1] - scores[0][0] + margin, 2
 

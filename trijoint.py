@@ -101,45 +101,6 @@ class StRNN(nn.Module):
 
         return output
 
-
-class StGRU(nn.Module):
-    def __init__(self):
-        super(StGRU, self).__init__()
-        embed_size = 1024
-        num_layers = 1
-        self.max_length = 20
-        self.rnn = nn.GRU(opts.stDim, embed_size, num_layers,
-                          batch_first=True, bidirectional=True)
-
-    def forward(self, x, sq_lengths):
-        # we get the w2v for each element of the ingredient sequence
-        # sort sequence according to the length
-        sorted_len, sorted_idx = sq_lengths.sort(0, descending=True)
-        index_sorted_idx = sorted_idx \
-            .view(-1, 1, 1).expand_as(x)
-        sorted_inputs = x.gather(0, index_sorted_idx.long())
-        # pack sequence
-        packed_seq = torch.nn.utils.rnn.pack_padded_sequence(
-            sorted_inputs, sorted_len.cpu().data.numpy(), batch_first=True)
-        # pass it to the rnn
-        self.rnn.flatten_parameters()
-        out, hidden = self.rnn(packed_seq)
-        # Reshape *final* output to (batch_size, hidden_size)
-        out, cap_len = torch.nn.utils.rnn.pad_packed_sequence(out, batch_first=True)
-        # unsort the output
-        _, original_idx = sorted_idx.sort(0, descending=False)
-
-        # bi-directional
-        unsorted_idx = original_idx.view(-1, 1, 1).expand_as(out)
-        out = out.gather(0, unsorted_idx).contiguous()
-
-        out = (out[:, :, :out.size(2) // 2] + out[:, :, out.size(2) // 2:]) / 2
-        I = torch.zeros(out.size(0), self.max_length - out.size(1), out.size(2)).cuda()
-        if not len(I.size()) < 3:
-            out = torch.cat((out, I), dim=1)
-
-        return out
-
 class IngRNN(nn.Module):
     def __init__(self):
         super(IngRNN, self).__init__()
@@ -184,51 +145,6 @@ class IngRNN(nn.Module):
         return output
 
 
-class IngGRU(nn.Module):
-    def __init__(self):
-        super(IngGRU, self).__init__()
-        word_dim = opts.ingrW2VDim
-        embed_size = 1024
-        num_layers = 1
-        self.max_length = 20
-        self.rnn = nn.GRU(word_dim, embed_size, num_layers,
-                          batch_first=True, bidirectional=True)
-        _, vec = torchwordemb.load_word2vec_bin(opts.ingrW2V)
-        self.embs = nn.Embedding(vec.size(0), opts.ingrW2VDim, padding_idx=0)
-        self.embs.weight.data.copy_(vec)
-
-    def forward(self, x, sq_lengths):
-        # we get the w2v for each element of the ingredient sequence
-        # x: [batch_size, 20]
-        x = self.embs(x)  # x: [batch_size, 20, 300]
-        # sort sequence according to the length
-        sorted_len, sorted_idx = sq_lengths.sort(0, descending=True)
-        index_sorted_idx = sorted_idx \
-            .view(-1, 1, 1).expand_as(x)
-        sorted_inputs = x.gather(0, index_sorted_idx.long())
-        # pack sequence
-        packed_seq = torch.nn.utils.rnn.pack_padded_sequence(
-            sorted_inputs, sorted_len.cpu().data.numpy(), batch_first=True)
-        # pass it to the rnn
-        self.rnn.flatten_parameters()
-        out, hidden = self.rnn(packed_seq)
-        # Reshape *final* output to (batch_size, hidden_size)
-        out, cap_len = torch.nn.utils.rnn.pad_packed_sequence(out, batch_first=True)
-        # unsort the output
-        _, original_idx = sorted_idx.sort(0, descending=False)
-
-        # bi-directional
-        unsorted_idx = original_idx.view(-1, 1, 1).expand_as(out)
-        out = out.gather(0, unsorted_idx).contiguous()
-
-        out = (out[:, :, :out.size(2) // 2] + out[:, :, out.size(2) // 2:]) / 2
-        I = torch.zeros(out.size(0), self.max_length - out.size(1), out.size(2)).cuda()
-        if not len(I.size()) < 3:
-            out = torch.cat((out, I), dim=1)
-
-        return out
-
-
 class FCNet(nn.Module):
     """Simple class for non-linear fully connect network
     """
@@ -255,7 +171,6 @@ class FCNet(nn.Module):
 
     def forward(self, x):
         return self.fc(x)
-
 
 class TCNet(nn.Module):
     def __init__(self, v_dim, q_dim, a_dim, h_dim, h_out, rank, glimpse, act='Tanh', dropout=[.2, .5], k=1):
@@ -390,8 +305,8 @@ class im2recipe(nn.Module):
 
         # self.stGRU_ = StGRU()
         self.stRNN_ = StRNN()
-        # self.ingRNN_ = IngRNN()
-        self.ingGRU_ = IngGRU()
+        self.ingRNN_ = IngRNN()
+        # self.ingGRU_ = IngGRU()
 
         self.inst_embedding = Embedding(opts.srnnDim, opts.embDim)
         self.ing_embedding = Embedding(1024, opts.embDim)
@@ -448,14 +363,7 @@ class im2recipe(nn.Module):
             v_b_emb = v_emb[b].expand(v_emb.size())
             # torch.Size([batch_size, 1, 1, 20, 1])
             b_emb = self.t_net.forward_with_weights(v_b_emb, inst_emb, ing_emb,att[:, :, :, :, 0])
-            b_emb = d_norm(b_emb, dim=1)  # b_emb = [batch_size, 1024]
-            inst_p = self.inst_prj(b_emb.unsqueeze(1))  # inst_p = [batch_size,1,1024]
-            inst_p = d_norm(inst_p, dim=2)
-            inst_v_emb = inst_p + inst_emb
-            ing_p = self.ing_prj(b_emb.unsqueeze(1))
-            ing_p = d_norm(ing_p, dim=2)
-            ing_v_emb = ing_p + ing_emb
-            z_emb.append(inst_v_emb.sum(1) + ing_v_emb.sum(1)) # [batch_size, h_dim]
+            z_emb.append(b_emb.sum(1)) # [batch_size, h_dim]
 
         z_emb = torch.stack(z_emb)  # z_emb: [batch_size, batch_size, h_dim]
         score = self._similarity(z_emb)
