@@ -52,5 +52,17 @@ test.py
 
 * `--val_num` : size of test set, default=1000.
 
-## More Supplementary Visual Results
+## Supplementary Visual Results
+
+### Recipe-to-Image retrieval results compared with ACME
+
+
+
+### More examples of recipe-to-Image retrieval
+
+![image](https://github.com/ACM-MM2021/TFUN-pytorch/blob/main/img/t2i.png)
+
+### 
+
+
 
