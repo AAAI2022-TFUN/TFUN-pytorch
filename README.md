@@ -60,7 +60,17 @@ test.py
 
 ### More examples of recipe-to-Image retrieval
 
-![image](https://github.com/ACM-MM2021/TFUN-pytorch/blob/main/img/t2i.png)
+Top-5 results of recipe-to-image retrieval obtained by our TFUN model. The correct retrieved image is highlighted in red color.
+
+![image](https://github.com/ACM-MM2021/TFUN-pytorch/blob/main/img/t2i_0.png)
+
+![image](https://github.com/ACM-MM2021/TFUN-pytorch/blob/main/img/t2i_1.png)
+
+![image](https://github.com/ACM-MM2021/TFUN-pytorch/blob/main/img/t2i_2.png)
+
+![image](https://github.com/ACM-MM2021/TFUN-pytorch/blob/main/img/t2i_3.png)
+
+![image](https://github.com/ACM-MM2021/TFUN-pytorch/blob/main/img/t2i_4.png)
 
 ### 
 
