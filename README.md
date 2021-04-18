@@ -56,7 +56,11 @@ test.py
 
 ### Recipe-to-Image retrieval results compared with ACME
 
+We analyze the typical visualized results on Recipe2Image retrieval obtained from our IMHF method and the compared baseline ACME. The correct retrieved image is highlighted in red color.
 
+![image](https://github.com/ACM-MM2021/TFUN-pytorch/blob/main/img/comparision1.png)
+
+![image](https://github.com/ACM-MM2021/TFUN-pytorch/blob/main/img/comparision2.png)
 
 ### More examples of recipe-to-Image retrieval
 
